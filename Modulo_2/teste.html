@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triagem Automática de Leads — Demonstração</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --ink: #0A0E1A;
+  --ink-2: #10162A;
+  --panel: #151C33;
+  --line: #262F4C;
+  --text: #E9ECF5;
+  --text-dim: #8B93B0;
+  --cold: #4C86F0;
+  --warm: #F5A623;
+  --hot: #FF4D3D;
+  --success: #38D9A9;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+
+body{
+  background: radial-gradient(ellipse 100% 60% at 50% -10%, #16204a 0%, var(--ink) 55%);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 48px 24px 80px;
+}
+
+.wrap{ max-width: 1080px; margin: 0 auto; }
+
+.eyebrow{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--hot);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.eyebrow::before{
+  content:'';
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--hot);
+  box-shadow: 0 0 0 4px rgba(255,77,61,0.18);
+  animation: pulse 1.8s infinite;
+}
+@keyframes pulse{
+  0%,100%{ opacity: 1; }
+  50%{ opacity: 0.35; }
+}
+
+.hero{
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 56px;
+  align-items: start;
+  margin-bottom: 64px;
+}
+@media (max-width: 860px){ .hero{ grid-template-columns: 1fr; } }
+
+h1{
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(34px, 4.2vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin-bottom: 20px;
+}
+h1 span{ color: var(--text-dim); }
+
+.sub{
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 46ch;
+  margin-bottom: 28px;
+}
+
+.stat-row{ display:flex; gap: 32px; margin-top: 8px; }
+.stat b{
+  display:block;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px;
+  color: var(--text);
+}
+.stat span{ font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* form panel */
+.panel{
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.panel::before{
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cold), var(--warm), var(--hot));
+}
+.panel h2{
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.panel .hint{ font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+
+label{
+  display:block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  margin-top: 16px;
+}
+label:first-of-type{ margin-top: 0; }
+
+input, textarea{
+  width: 100%;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+input:focus, textarea:focus{
+  outline: none;
+  border-color: var(--warm);
+}
+textarea{ min-height: 80px; }
+
+button{
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px;
+  border: none;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.15s;
+}
+button:hover{ opacity: 0.88; }
+button:active{ transform: scale(0.98); }
+button:disabled{ opacity: 0.5; cursor: not-allowed; }
+
+.error-box{
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(255,77,61,0.08);
+  border: 1px solid rgba(255,77,61,0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #ffb3ab;
+  display: none;
+}
+
+/* process steps */
+.process{
+  display: none;
+  margin-top: 64px;
+}
+.process.active{ display: block; }
+
+.steps{
+  display: flex;
+  gap: 0;
+  margin-bottom: 40px;
+  counter-reset: step;
+}
+.step{
+  flex: 1;
+  text-align: center;
+  position: relative;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding-top: 34px;
+}
+.step::before{
+  content: '';
+  position: absolute;
+  top: 8px; left: 50%;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--ink-2);
+  border: 2px solid var(--line);
+  transform: translateX(-50%);
+  z-index: 2;
+  transition: all 0.3s;
+}
+.step::after{
+  content: '';
+  position: absolute;
+  top: 13px; left: -50%;
+  width: 100%; height: 2px;
+  background: var(--line);
+  z-index: 1;
+}
+.step:first-child::after{ display: none; }
+.step.done::before{ background: var(--success); border-color: var(--success); }
+.step.done::after{ background: var(--success); }
+.step.active-step{ color: var(--text); }
+.step.active-step::before{
+  background: var(--warm); border-color: var(--warm);
+  box-shadow: 0 0 0 5px rgba(245,166,35,0.2);
+}
+
+/* result */
+.result{
+  display: none;
+  grid-template-columns: 280px 1fr;
+  gap: 40px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 32px;
+}
+.result.show{ display: grid; }
+@media (max-width: 780px){ .result{ grid-template-columns: 1fr; } }
+
+.gauge-col{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.gauge{
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background: conic-gradient(var(--gauge-color, var(--cold)) calc(var(--score, 0) * 1%), var(--ink-2) 0);
+  transition: background 1s ease;
+}
+.gauge::before{
+  content: '';
+  position: absolute;
+  width: 148px; height: 148px;
+  border-radius: 50%;
+  background: var(--panel);
+}
+.gauge-inner{
+  position: relative;
+  text-align: center;
+  z-index: 2;
+}
+.gauge-inner b{
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 40px;
+  display: block;
+}
+.gauge-inner span{ font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.badge{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+.result-body h3{
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-top: 22px;
+  margin-bottom: 8px;
+}
+.result-body h3:first-child{ margin-top: 0; }
+.result-body p{ font-size: 15px; line-height: 1.6; }
+
+.reply-box{
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--success);
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.reset-link{
+  display: inline-block;
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+footer{
+  text-align: center;
+  margin-top: 60px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Demonstração ao vivo — IA analisando em tempo real</div>
+
+  <div class="hero">
+    <div>
+      <h1>Todo lead que <span>espera</span>,<br>esfria.</h1>
+      <p class="sub">Preencha o formulário como se fosse um lead real. A automação vai qualificar, classificar por temperatura e gerar a resposta que seria enviada — tudo em segundos, sem ninguém do time tocar em nada.</p>
+      <div class="stat-row">
+        <div class="stat"><b>&lt; 5s</b><span>Tempo de resposta</span></div>
+        <div class="stat"><b>3</b><span>Níveis de temperatura</span></div>
+        <div class="stat"><b>0</b><span>Toques humanos</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Simular um lead</h2>
+      <p class="hint">Os dados abaixo não são salvos em nenhum lugar.</p>
+
+      <form id="leadForm">
+        <label for="nome">Nome</label>
+        <input id="nome" type="text" placeholder="Ex: Marina Alves" required>
+
+        <label for="empresa">Empresa</label>
+        <input id="empresa" type="text" placeholder="Ex: Tech Solutions Ltda" required>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="Ex: marina@techsolutions.com" required>
+
+        <label for="telefone">WhatsApp (com DDD e código do país)</label>
+        <input id="telefone" type="text" placeholder="Ex: 5527999999999" required>
+
+        <label for="mensagem">O que essa pessoa precisa?</label>
+        <textarea id="mensagem" placeholder="Ex: Preciso automatizar o atendimento do meu WhatsApp, recebo muitos leads e não dou conta de responder todos rápido." required></textarea>
+
+        <button type="submit" id="submitBtn">Enviar como lead</button>
+      </form>
+
+      <div class="error-box" id="errorBox"></div>
+    </div>
+  </div>
+
+  <div class="process" id="process">
+    <div class="steps">
+      <div class="step" data-step="1">Recebendo</div>
+      <div class="step" data-step="2">Analisando</div>
+      <div class="step" data-step="3">Classificando</div>
+      <div class="step" data-step="4">Respondendo</div>
+    </div>
+
+    <div class="result" id="result">
+      <div class="gauge-col">
+        <div class="gauge" id="gauge">
+          <div class="gauge-inner">
+            <b id="scoreNum">0</b>
+            <span>pontuação</span>
+          </div>
+        </div>
+        <div class="badge" id="badge">—</div>
+      </div>
+      <div class="result-body">
+        <h3>Por que essa pontuação</h3>
+        <p id="motivo">—</p>
+        <h3>Resposta que seria enviada ao lead agora</h3>
+        <div class="reply-box" id="resposta">—</div>
+        <span class="reset-link" id="resetLink">← testar com outro lead</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>n8n · Claude API · triagem automática de leads</footer>
+</div>
+
+<script>
+// ===== CONFIGURAÇÃO: cole aqui a URL de produção do seu webhook do n8n =====
+const N8N_WEBHOOK_URL = "https://contrastedly-subdiaphragmatic-merrie.ngrok-free.dev/webhook/triagem-leads";
+// ============================================================================
+
+const form = document.getElementById('leadForm');
+const submitBtn = document.getElementById('submitBtn');
+const process = document.getElementById('process');
+const result = document.getElementById('result');
+const errorBox = document.getElementById('errorBox');
+const resetLink = document.getElementById('resetLink');
+const steps = document.querySelectorAll('.step');
+
+const colors = { quente: 'var(--hot)', morno: 'var(--warm)', frio: 'var(--cold)' };
+const colorRaw = { quente: '#FF4D3D', morno: '#F5A623', frio: '#4C86F0' };
+
+function resetSteps(){
+  steps.forEach(s => { s.classList.remove('done','active-step'); });
+}
+
+async function runStep(n, delay){
+  return new Promise(res => {
+    setTimeout(() => {
+      steps.forEach(s => {
+        const sn = parseInt(s.dataset.step);
+        if (sn < n) { s.classList.add('done'); s.classList.remove('active-step'); }
+        if (sn === n) { s.classList.add('active-step'); s.classList.remove('done'); }
+      });
+      res();
+    }, delay);
+  });
+}
+
+async function finishSteps(){
+  steps.forEach(s => { s.classList.add('done'); s.classList.remove('active-step'); });
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorBox.style.display = 'none';
+  result.classList.remove('show');
+
+  const nome = document.getElementById('nome').value.trim();
+  const empresa = document.getElementById('empresa').value.trim();
+  const mensagem = document.getElementById('mensagem').value.trim();
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Processando...';
+  process.classList.add('active');
+  resetSteps();
+
+  await runStep(1, 200);
+  await runStep(2, 500);
+
+  const prompt = `Você é um qualificador de leads para uma agência que vende automações com IA e n8n para empresas.
+
+Analise o lead abaixo e responda APENAS com um JSON válido, sem markdown, sem crases, sem texto antes ou depois, no formato exato:
+{"score": <número de 0 a 100>, "categoria": "<quente ou morno ou frio>", "motivo": "<uma frase curta explicando a pontuação>", "resposta_personalizada": "<mensagem curta, calorosa e profissional para responder esse lead agora, mencionando algo específico do que ele disse, em português do Brasil, sem saudações genéricas de robô>"}
+
+Dados do lead:
+Nome: ${nome}
+Empresa: ${empresa}
+Necessidade descrita: ${mensagem}`;
+
+  try {
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome, empresa, mensagem, email: document.getElementById('email') ? document.getElementById('email').value : '', telefone: document.getElementById('telefone') ? document.getElementById('telefone').value : '' })
+    });
+
+    if (!response.ok) throw new Error('Falha no webhook do n8n: ' + response.status);
+
+    const parsed = await response.json();
+
+    await runStep(3, 400);
+    await runStep(4, 500);
+    await finishSteps();
+
+    const score = Math.max(0, Math.min(100, parseInt(parsed.score) || 0));
+    const categoria = (parsed.categoria || 'morno').toLowerCase();
+    const color = colorRaw[categoria] || colorRaw.morno;
+
+    document.getElementById('gauge').style.setProperty('--score', score);
+    document.getElementById('gauge').style.setProperty('--gauge-color', color);
+    document.getElementById('scoreNum').textContent = score;
+    document.getElementById('badge').textContent = categoria;
+    document.getElementById('badge').style.color = color;
+    document.getElementById('badge').style.borderColor = color;
+    document.getElementById('motivo').textContent = parsed.motivo || '—';
+    document.getElementById('resposta').textContent = parsed.resposta_personalizada || '—';
+
+    result.classList.add('show');
+  } catch (err) {
+    console.error(err);
+    errorBox.textContent = 'Não foi possível processar agora: ' + err.message + '. Tente novamente.';
+    errorBox.style.display = 'block';
+    process.classList.remove('active');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Enviar como lead';
+  }
+});
+
+resetLink.addEventListener('click', () => {
+  process.classList.remove('active');
+  result.classList.remove('show');
+  form.reset();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
+</body>
+</html>
