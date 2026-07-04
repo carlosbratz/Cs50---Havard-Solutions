@@ -464,7 +464,10 @@ Necessidade descrita: ${mensagem}`;
   try {
     const response = await fetch(N8N_WEBHOOK_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
       body: JSON.stringify({ nome, empresa, mensagem, email: document.getElementById('email') ? document.getElementById('email').value : '', telefone: document.getElementById('telefone') ? document.getElementById('telefone').value : '' })
     });
 
